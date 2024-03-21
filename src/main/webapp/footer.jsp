@@ -1,4 +1,6 @@
 <div class="links">
-  <p>The footer</p>
+  <hr>
+  <p>Navigation</p>
+  <p><a href="index.html">Back to main</a></p>
   <div class="clearBoth"></div>
 </div>

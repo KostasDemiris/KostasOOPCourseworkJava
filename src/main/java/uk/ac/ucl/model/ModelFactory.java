@@ -12,17 +12,19 @@ import java.io.IOException;
 public class ModelFactory
 {
   private static Model model;
-
-  public static Model getModel() throws IOException
-  {
+  public static Model getModel(String fileName){
     if (model == null)
     {
       model = new Model();
       // Note where the data file is stored in the data directory,
       // and the pathname to locate it.
       // The data should be read the file once, not every time the model is accessed!
-      model.readFile("data/patients100.csv");
+      model.readFile(fileName);
     }
     return model;
+  }
+  public static Model getModel() throws IOException
+  {
+    return getModel("data/patients100.csv");
   }
 }

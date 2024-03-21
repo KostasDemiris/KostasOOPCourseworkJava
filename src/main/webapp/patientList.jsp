@@ -13,11 +13,12 @@
   <ul>
     <%
       List<String> patients = (List<String>) request.getAttribute("patientNames");
-      for (String patient : patients)
+      List<String> patientIDs = (List<String>) request.getAttribute("patientIDs");
+      for (int index = 0; index < patients.size(); index++)
       {
-        String href = "dummypage.html";
+        String href = "/patientProfile.html?patientID=" + patientIDs.get(index); // Patient is now a query parameter
     %>
-    <li><a href="<%=href%>"><%=patient%></a>
+    <li><a href="<%=href%>"><%=patients.get(index)%></a>
     </li>
     <% } %>
   </ul>

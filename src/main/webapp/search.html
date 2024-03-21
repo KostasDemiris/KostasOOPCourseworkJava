@@ -1,4 +1,3 @@
-
 <html>
 <head>
   <title>Patient Data App</title>
@@ -7,7 +6,12 @@
 <div class="main">
   <h1>Search</h1>
   <form method="POST" action="/runsearch.html">
-    <input type="text" name="searchstring" placeholder="Enter search keyword here"/>
+    <label>
+      <input type="text" name="searchstring" placeholder="Enter search keyword here"/>
+    </label>
+    <label>
+      <input type="checkbox" name="absolute" value="true"> Absolute
+    </label>
     <input type="submit" value="Search"/>
   </form>
 </div>

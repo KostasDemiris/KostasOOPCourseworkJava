@@ -24,8 +24,12 @@ public class SearchServlet extends HttpServlet
     // Use the model to do the search and put the results into the request object sent to the
     // Java Server Page used to display the results.
     Model model = ModelFactory.getModel();
-    List<String> searchResult = model.searchFor(request.getParameter("searchstring"));
+    boolean absolute = "true".equals(request.getParameter("absolute"));
+    // If they left absolute checkbox un-ticked, it'll return null, which in turn gives a false. V. proud of this
+    List<String> searchResult = model.searchFor(request.getParameter("searchstring"), absolute);
+    List<String> columnNames = model.getColumnNames();
     request.setAttribute("result", searchResult);
+    request.setAttribute("columnNames", columnNames);
 
     // Invoke the JSP page.
     ServletContext context = getServletContext();
