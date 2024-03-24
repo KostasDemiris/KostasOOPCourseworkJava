@@ -25,6 +25,7 @@ public class ModelFactory
   }
   public static Model getModel() throws IOException
   {
+    // This is the default one that will be opened, which can then be opened or other files can be opened over it
     return getModel("data/patients100.csv");
   }
 }

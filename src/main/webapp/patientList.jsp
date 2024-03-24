@@ -5,6 +5,11 @@
 <head>
   <jsp:include page="/meta.jsp"/>
   <title>Patient Data App</title>
+  <script>
+    function revealFileNameInput(){
+      document.getElementById("FileNameInput").style.display = 'block';
+    }
+  </script>
 </head>
 <body>
 <jsp:include page="/header.jsp"/>
@@ -23,6 +28,15 @@
     <% } %>
   </ul>
 </div>
+<%
+  request.setAttribute("actionName", "addRow");
+%>
+
+<button onclick="revealFileNameInput()">Save database to file</button>
+<div id="FileNameInput" style="display: none">
+  <jsp:include page="FileSaveNameInput.jsp"/>
+</div>
+
 <jsp:include page="/footer.jsp"/>
 </body>
 </html>

@@ -29,8 +29,11 @@ public class ViewPatientListServlet extends HttpServlet
     List<String> patientIDs = model.getColumnData("ID");
     // Then add the data to the request object that will be sent to the Java Server Page, so that
     // the JSP can access the data (a Java data structure).
+
+    request.setAttribute("columnNames", model.getColumnNames());
     request.setAttribute("patientNames", patientNames);
     request.setAttribute("patientIDs", patientIDs);
+    request.setAttribute("actionName", "addRow");
 
     // Invoke the JSP.
     // A JSP page is actually converted into a Java class, so behind the scenes everything is Java.

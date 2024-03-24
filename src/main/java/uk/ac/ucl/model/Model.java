@@ -5,8 +5,10 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import uk.ac.ucl.Exceptions.DatabaseInconsistencyException;
 import uk.ac.ucl.Exceptions.NotFoundException;
 
+import javax.swing.*;
 import javax.xml.crypto.Data;
 
 public class Model
@@ -17,11 +19,14 @@ public class Model
   // This is the current database being used to store the data.
   // It can either be replaced or merged into when reading a new CSV file
 
+  public DataFrame getFrame(){
+    return this.dataBase.getClone();
+    // This lets them get their own copy of the frame being stored, without being able to modify the stored copy.
+  }
   public Boolean storePatientData(String filePath){
     // Attempts to store Patient Data from a read csv file into the database, returning true if successful else false.
-    DataLoader loader = new DataLoader();
     try {
-      this.dataBase = loader.createFrameFromFile(filePath, this.dataBase);
+      this.dataBase = DataLoader.createFrameFromFile(filePath, this.dataBase);
       // This overwrites the current data in the database
       return true;
     }
@@ -36,8 +41,7 @@ public class Model
   public ArrayList<ArrayList<String>> returnFileData(String filePath){
     // This returns the data contained in a csv file without committing to storing it, in situations like previewing
     // or merging
-    DataLoader loader = new DataLoader();
-    DataFrame frame = loader.createFrameFromFile(filePath);
+    DataFrame frame = DataLoader.createFrameFromFile(filePath);
     return frame.getAllRows();
   }
   public ArrayList<String> getPatientRecord(String ID){
@@ -51,12 +55,20 @@ public class Model
       // So if they search for an array with that ID, and it doesn't exist, it will return an empty record
     }
   }
-
   public Boolean addFileData(String filePath){
+    return addFileData(filePath, false);
+  }
+
+  public Boolean addFileData(String filePath, boolean JSON){
     // add the data from one file to the current database, under some restrictions (the columns must be the same)
-    DataLoader loader = new DataLoader();
     try {
-      List<String> columnNames = loader.getColumnNames(filePath);
+      List<String> columnNames;
+      if (!JSON) {
+        columnNames = DataLoader.getColumnNames(filePath);
+      }
+      else{
+        columnNames = JSONReader.getColumnNames(filePath);
+      }
       List<String> dataBaseColumnNames = this.dataBase.getColumnNames();
       ArrayList<Integer> columnPositions = new ArrayList<>();
       // This stores where each column from the current database is stored in the new array
@@ -64,8 +76,8 @@ public class Model
       for (String column: columnNames){
         // This ensures that the data has compatible column names, and if it's in a different order with similar column
         // names, ensures that the columns are read from in the correct order to maintain compatability
-//        if (dataBaseColumnNames.stream().noneMatch(column:: equals)) {return false;}
         boolean hasBeenFound = false;
+
         for (int index = 0; index < dataBaseColumnNames.size() && !hasBeenFound; index++){
           int finalIndex = index;
           if (column.equals(dataBaseColumnNames.get(index)) && columnPositions.stream().noneMatch
@@ -77,14 +89,26 @@ public class Model
           }
         }
         if (!hasBeenFound) {return false;}
+        // If it isn't compatible, don't bother trying to actually read it
       }
-      // We've gotta rearrange the columns here, DO LATER
-
-      DataFrame other = loader.createFrameFromFile(filePath);
-      for (ArrayList<String> row: other.getAllRows(1)){
-        // This way it skips the columns which we've already confirmed are compatible
+      DataFrame other;
+      if (!JSON) {
+        other = DataLoader.createFrameFromFile(filePath);
+      }
+      else{
+        other = JSONReader.readFromJsonFile(filePath);
+      }
+      ArrayList<String> IDs = this.getColumnData("ID");
+      for (ArrayList<String> row: other.getAllRows(0)){
         try {
-          this.dataBase.addRow(row);
+          if (!IDs.contains(row.get(columnPositions.getFirst()))) {
+            // We don't want duplicate ID's, if it doesn't have one, don't add it
+            ArrayList<String> rearrangedColumn = new ArrayList<>();
+            for (int index : columnPositions) {
+              rearrangedColumn.add(row.get(index));
+            }
+            this.dataBase.addRow(rearrangedColumn);
+          }
         }
         catch (IllegalArgumentException exception){
           // Doesn't add that row, and no cleanup needed since it throws an error pre-storing operation.
@@ -116,9 +140,8 @@ public class Model
   // The data files are stored in the root directory of the project (the directory your project is in),
   // in the directory named data.
   public void readFile(String fileName){
-    DataLoader loader = new DataLoader();
     try {
-      this.dataBase = loader.createFrameFromFile(fileName);
+      this.dataBase = DataLoader.createFrameFromFile(fileName);
     }
     catch (IOError e){
       // This means that the provided file had an issue
@@ -209,6 +232,32 @@ public class Model
     }
     return relevantPatient;
   }
+  public void editRow(List<String> newColumn) throws NotFoundException {
+    this.dataBase.editRow(newColumn.getFirst(), newColumn);
+  }
+  public boolean deleteRow(String ID){
+    // If it returns true, it
+    try {
+      // This returns whether the row was deleted, if this returns false, it means the ID couldn't be found
+        return this.dataBase.deleteRow(ID);
+    }
+    catch (DatabaseInconsistencyException exception){
+      // This means we have to reload the database because there's been an issue encountered with the database
+      // (structurally and in a way that cannot be fixed e.g. in this case differing numbers of columns)
+      this.dataBase = DataLoader.createFrameFromFile(this.dataBase.sourceFile);
+      return false;
+    }
+  }
+  public boolean addRow(List<String> newRow){
+    try{
+      this.dataBase.addRow(newRow);
+      return true;
+    }
+    catch (IllegalArgumentException exception){
+      System.out.println("illegal...");
+      return false;
+    }
+  }
   public HashMap<String, ArrayList<String>> getHouseholds(){
     // Basically, it returns each unique address and the name + ID of each person that lives in it
     HashMap<String, ArrayList<String>> households = new HashMap<>();
@@ -258,14 +307,30 @@ public class Model
     }
     return relevantPatient;
   }
+
   public boolean writeToCSVFile(DataFrame dataFrame, String pathName){
-    DataWriter writer = new DataWriter();
+    if (dataFrame.sourceFile.equals(pathName)){
+      throw new IllegalArgumentException("Cannot save the database to the file that was read from.");
+    }
     try{
-      writer.writeCSVFile(pathName, dataFrame);
+      DataWriter.writeCSVFile(pathName, dataFrame);
       return false;
     }
     catch (IOException exception){
       return false;
     }
+  }
+  public void readFromJSONFile(String pathName) throws IOException {
+    DataFrame readFrame = JSONReader.readFromJsonFile(pathName);
+    if (!readFrame.isEmpty()){
+      this.dataBase = readFrame;
+    }
+    else{
+      throw new IOException();
+    }
+    // If it fails to read it, it'll just create an empty frame
+  }
+  public void replaceDatabase(DataFrame frame){
+    this.dataBase = frame;
   }
 }
