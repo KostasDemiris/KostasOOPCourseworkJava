@@ -1,1 +1,1 @@
-Example Java web application for COMP0004
+This is the Java Coursework for UCL First Year's Object Oriented Programming Module. 
